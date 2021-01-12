@@ -1,0 +1,73 @@
+﻿#pragma kernel ComputePointCloud
+
+uint Width;
+uint Height;
+float2 ThresholdX;
+float2 ThresholdY;
+float2 ThresholdZ;
+StructuredBuffer<int> DepthBuffer;
+StructuredBuffer<float2> Depth2DTo3DBuffer;
+
+RWTexture2D<float4> Positions;
+RWTexture2D<float4> Colors;
+
+[numthreads(64,1,1)]
+void ComputePointCloud (uint idx : SV_DispatchThreadID)
+{
+    // each index of the depth buffer holds two
+    // 16-bit unsigned shorts
+    uint depth_a = (DepthBuffer[idx] >> 16); 
+    uint depth_b = (DepthBuffer[idx] & 0x0000ff00);
+
+    // convert uint16_t depth (in millimetres)
+    // into a Unity world space float (in metres)
+    float z_a = (float) (depth_a / 1000.f);
+    float z_b = (float) (depth_b / 1000.f); 
+
+    uint id = idx * 2;
+
+    uint col_a = id % Width;
+    uint row_a = Height - (id / Width);
+    uint2 coord_a = uint2(col_a, row_a);
+
+    uint row_b = Height - ((id + 1) / Width);
+    uint col_b = (id + 1) % Width;
+    uint2 coord_b = uint2(col_b, row_b);
+
+    // get undistortion x and y multipliers
+    // from the 2D -> 3D lookup table
+    int lut_idx_a = (row_a * Width) + col_a;
+    int lut_idx_b = (row_b * Width) + col_b;
+    float2 mult_a = Depth2DTo3DBuffer[lut_idx_a];
+    float2 mult_b = Depth2DTo3DBuffer[lut_idx_b];
+
+    // perform undistortion
+    float x_a = mult_a.x * z_a;
+    float y_a = mult_a.y * z_a;
+
+    float x_b = mult_b.x * z_b;
+    float y_b = mult_b.y * z_b;
+
+    // discard points that are not within thresholds
+    // by setting alpha (w) to 0
+    float alive_a = 1.f;
+    float alive_b = 1.f;
+
+    if (x_a < ThresholdX.x || x_a > ThresholdX.y ||
+        y_a < ThresholdY.x || y_a > ThresholdY.y ||
+        z_a < ThresholdZ.x || z_a > ThresholdZ.y)
+        alive_a = 0.f;
+
+    if (x_b < ThresholdX.x || x_b > ThresholdX.y ||
+        y_b < ThresholdY.x || y_b > ThresholdY.y ||
+        z_b < ThresholdZ.x || z_b > ThresholdZ.y)
+        alive_b = 0.f;
+
+    // pack into a 128-bit RGBA float Texture
+    Positions[coord_a] = float4(x_a, y_a, z_a, alive_a);
+    Positions[coord_b] = float4(x_b, y_b, z_b, alive_b);
+
+    // white only for now
+    Colors[coord_a] = float4(1.f, 1.f, 1.f, 1.f);
+    Colors[coord_b] = float4(1.f, 1.f, 1.f, 1.f);
+}
