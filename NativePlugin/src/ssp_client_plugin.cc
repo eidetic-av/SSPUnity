@@ -23,11 +23,11 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-#include "../utils/logger.h"
+#include <utils/logger.h>
 
-#include "../readers/network_reader.h"
-#include "../utils/video_utils.h"
-#include "../utils/image_converter.h"
+#include <readers/network_reader.h>
+#include <utils/video_utils.h>
+#include <utils/image_converter.h>
 
 NetworkReader* reader;
 ZDepthDecoder* decoder;
