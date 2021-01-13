@@ -27,3 +27,7 @@ add_library(ssp_client_plugin SHARED src/ssp_client_plugin.cc $ENV{SSP_DIR}/read
 
 target_link_libraries(ssp_client_plugin ${LIB_FILES})
 target_link_libraries(ssp_client_plugin ${OpenCV_LIBS})
+
+set(UNITY_PACKAGE_DIR "../../UnityPackage/Plugins/Win64/")
+add_custom_command(TARGET ssp_client_plugin POST_BUILD COMMAND
+       	${CMAKE_COMMAND} -E copy $<TARGET_FILE:ssp_client_plugin> ${UNITY_PACKAGE_DIR})
