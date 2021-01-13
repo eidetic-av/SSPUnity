@@ -1,0 +1,24 @@
+{
+  "name": "com.eidetic.sensorstreampipe",
+  "displayName": "SensorStreamPipe",
+  "version": "0.0.1",
+  "unity": "2020.2",
+  "description": "Client plugin for Sensor-Stream-Pipe networked RGB-D camera server.",
+  "keywords": [
+    "sensor",
+    "SensorStreamPipe",
+    "kinect",
+    "azure",
+    "depth",
+    "point-cloud",
+    "point",
+    "cloud"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eidetic-av/SSPUnity"
+  },
+  "dependencies": {
+    "com.eidetic.urack":"0.0.1"
+  }
+}

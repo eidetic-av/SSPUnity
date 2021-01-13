@@ -1,0 +1,8 @@
+build/
+CMakeFiles/
+cmake-*/
+.idea/
+.vs/
+
+*~*
+

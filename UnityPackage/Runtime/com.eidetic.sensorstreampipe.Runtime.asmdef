@@ -1,0 +1,16 @@
+{
+    "name": "com.eidetic.sensorstreampipe.Runtime",
+    "rootNamespace": "",
+    "references": [
+        "com.Eidetic.URack.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
