@@ -9,7 +9,7 @@
 #include <unistd.h>
 #endif
 
-#include "../utils/logger.h"
+#include <utils/logger.h>
 
 #include <ctime>
 #include <iostream>
@@ -20,20 +20,14 @@
 #include <yaml-cpp/yaml.h>
 #include <zmq.hpp>
 
-#include "../encoders/libav_encoder.h"
-#include "../encoders/null_encoder.h"
-#include "../encoders/zdepth_encoder.h"
-#include "../readers/video_file_reader.h"
-#include "../readers/multi_image_reader.h"
+#include <encoders/libav_encoder.h>
+#include <encoders/null_encoder.h>
+#include <encoders/zdepth_encoder.h>
+#include <readers/video_file_reader.h>
+#include <readers/multi_image_reader.h>
 
-#ifdef SSP_WITH_NVPIPE_SUPPORT
-#include "../encoders/nv_encoder.h"
-#endif
-
-#ifdef SSP_WITH_KINECT_SUPPORT
-#include "../readers/kinect_reader.h"
-#include "../utils/kinect_utils.h"
-#endif
+#include <readers/kinect_reader.h>
+#include <utils/kinect_utils.h>
 
 int main(int argc, char *argv[]) {
 
@@ -44,15 +38,8 @@ int main(int argc, char *argv[]) {
   try {
     av_log_set_level(AV_LOG_QUIET);
 
-    if (argc < 2) {
-      std::cerr << "Usage: ssp_server <parameters_file>" << std::endl;
-      return 1;
-    }
-
-    zmq::context_t context(1);
-    zmq::socket_t socket(context, ZMQ_PUB);
-
-    std::string codec_parameters_file = std::string(argv[1]);
+    std::string codec_parameters_file = "./config.yaml";
+    if (argc >= 2) codec_parameters_file = std::string(argv[1]);
 
     YAML::Node codec_parameters = YAML::LoadFile(codec_parameters_file);
 
@@ -61,6 +48,13 @@ int main(int argc, char *argv[]) {
 
     std::string host = codec_parameters["general"]["host"].as<std::string>();
     unsigned int port = codec_parameters["general"]["port"].as<unsigned int>();
+
+    zmq::context_t context(1);
+    zmq::socket_t publisher(context, ZMQ_PUB);
+
+    spdlog::debug("Attempting to bind publisher to tcp://*:{}", port);
+    publisher.bind("tcp://*:" + std::to_string(port));
+    spdlog::debug("Server created.");
 
     std::unique_ptr<IReader> reader = nullptr;
 
@@ -92,13 +86,9 @@ int main(int argc, char *argv[]) {
       }
 
     } else if (reader_type == "kinect") {
-#ifdef SSP_WITH_KINECT_SUPPORT
       ExtendedAzureConfig c = BuildKinectConfigFromYAML(
           general_parameters["frame_source"]["parameters"]);
       reader = std::unique_ptr<KinectReader>(new KinectReader(0, c));
-#else
-      exit(1);
-#endif
     } else {
       spdlog::error("Unknown reader type: \"{}\". Supported types are "
                     "\"frames\", \"video\" and \"kinect\"",
@@ -120,15 +110,7 @@ int main(int argc, char *argv[]) {
       if (encoder_type == "libav")
         fe = std::shared_ptr<LibAvEncoder>(
             new LibAvEncoder(v, reader->GetFps()));
-      else if (encoder_type == "nvenc") {
-#ifdef SSP_WITH_NVPIPE_SUPPORT
-        fe = std::shared_ptr<NvEncoder>(new NvEncoder(v, reader->GetFps()));
-#else
-        spdlog::error("SSP compiled without \"nvenc\" reader support. Set to "
-                      "SSP_WITH_NVPIPE_SUPPORT=ON when configuring with cmake");
-        exit(1);
-#endif
-      } else if (encoder_type == "zdepth")
+      else if (encoder_type == "zdepth")
         fe =
             std::shared_ptr<ZDepthEncoder>(new ZDepthEncoder(reader->GetFps()));
       else if (encoder_type == "null")
@@ -151,8 +133,6 @@ int main(int argc, char *argv[]) {
     double sent_mbytes = 0;
 
     double sent_latency = 0;
-
-    socket.connect("tcp://" + host + ":" + std::to_string(port));
 
     unsigned int fps = reader->GetFps();
 
@@ -200,9 +180,12 @@ int main(int argc, char *argv[]) {
       if (!v.empty()) {
         std::string message = CerealStructToString(v);
 
+        // I think "request" here is the video data...
+        // let's call it something else to make that clearer
         zmq::message_t request(message.size());
         memcpy(request.data(), message.c_str(), message.size());
-        socket.send(request);
+        publisher.send(request);
+
         sent_frames += 1;
         sent_mbytes += message.size() / 1000.0;
 

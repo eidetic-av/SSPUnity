@@ -23,11 +23,12 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-#include "../utils/logger.h"
+#include <utils/logger.h>
 
-#include "../readers/network_reader.h"
-#include "../utils/video_utils.h"
-#include "../utils/image_converter.h"
+#include <utils/video_utils.h>
+#include <utils/image_converter.h>
+
+#include "../include/network_subscriber.h"
 
 int main(int argc, char *argv[]) {
 
@@ -38,42 +39,35 @@ int main(int argc, char *argv[]) {
 
   try {
 
-    if (argc < 2) {
-      std::cerr << "Usage: ssp_client_opencv <port> (<log level>) (<log file>)"
+    if (argc < 3) {
+      std::cerr << "Usage: ssp_client_subscriber <host> <port>"
                 << std::endl;
       return 1;
     }
     std::string log_level = "debug";
     std::string log_file = "";
 
-    if (argc > 2)
-      log_level = argv[2];
-    if (argc > 3)
-      log_file = argv[3];
+    std::string host = argv[1];
+    int port = std::stoi(argv[2]);
+    NetworkSubscriber subscriber(host, port);
 
-    int port = std::stoi(argv[1]);
-    NetworkReader reader(port);
-
-    reader.init();
+    subscriber.init();
 
     std::unordered_map<std::string, std::shared_ptr<IDecoder>> decoders;
 
     bool imgChanged = false;
-    while (reader.HasNextFrame()) {
-      reader.NextFrame();
-      std::vector<FrameStruct> f_list = reader.GetCurrentFrame();
+    while (subscriber.HasNextFrame()) {
+      subscriber.NextFrame();
+      std::vector<FrameStruct> f_list = subscriber.GetCurrentFrame();
 
       for (FrameStruct f : f_list) {
         std::string decoder_id = f.stream_id + std::to_string(f.sensor_id);
 
-        // Discard frames older than 15ms
-        u_long frameAge = f.timestamps.back() - f.timestamps.at(1);
-        bool tooOld = frameAge > 15;
-
         cv::Mat img;
+
         imgChanged = FrameStructToMat(f, img, decoders);
 
-        if (imgChanged && !img.empty() && !tooOld) {
+        if (imgChanged && !img.empty()) {
 
           // Manipulate image to show as a color map
           if (f.frame_type == 1) {
