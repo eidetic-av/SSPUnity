@@ -20,10 +20,18 @@ link_directories("/libs/lib")
 
 set(LIB_FILES zmq zdepth zstd yaml-cpp swscale avcodec avformat swresample avutil avfilter)
 
-set(SOURCE_FILES $ENV{SSP_DIR}/readers/image_reader.cc $ENV{SSP_DIR}/readers/multi_image_reader.cc $ENV{SSP_DIR}/structs/frame_struct.hpp $ENV{SSP_DIR}/utils/utils.cc $ENV{SSP_DIR}/utils/video_utils.cc $ENV{SSP_DIR}/utils/image_decoder.cc $ENV{SSP_DIR}/utils/image_converter.cc)
-set(DECODER_SOURCE_FILES $ENV{SSP_DIR}/decoders/libav_decoder.cc $ENV{SSP_DIR}/decoders/zdepth_decoder.cc)
+set(SOURCE_FILES $ENV{SSP_DIR}/readers/image_reader.cc $ENV{SSP_DIR}/readers/multi_image_reader.cc 
+	$ENV{SSP_DIR}/structs/frame_struct.hpp $ENV{SSP_DIR}/utils/utils.cc $ENV{SSP_DIR}/utils/video_utils.cc 
+	$ENV{SSP_DIR}/utils/image_decoder.cc $ENV{SSP_DIR}/utils/image_converter.cc 
+	$ENV{SSP_DIR}/readers/network_reader.cc $ENV{SSP_DIR}/decoders/libav_decoder.cc 
+	$ENV{SSP_DIR}/decoders/zdepth_decoder.cc)
 
-add_library(ssp_client_plugin SHARED src/ssp_client_plugin.cc $ENV{SSP_DIR}/readers/network_reader.cc ${DECODER_SOURCE_FILES} ${SOURCE_FILES})
+set(ENCODER_SOURCE_FILES $ENV{SSP_DIR}/encoders/libav_encoder.cc $ENV{SSP_DIR}/encoders/zdepth_encoder.cc)
+
+add_executable(ssp_server_publish src/ssp_server_publish.cc ${SOURCE_FILES} ${ENCODER_SOURCE_FILES})
+add_executable(ssp_client_subscriber src/ssp_client_subscriber.cc ${SOURCE_FILES})
+
+add_library(ssp_client_plugin SHARED src/ssp_client_plugin.cc ${SOURCE_FILES})
 
 target_link_libraries(ssp_client_plugin ${LIB_FILES})
 target_link_libraries(ssp_client_plugin ${OpenCV_LIBS})
