@@ -60,15 +60,6 @@ int main(int argc, char *argv[]) {
 
     std::string reader_type =
         general_parameters["frame_source"]["type"].as<std::string>();
-    if (reader_type == "frames") {
-      if (general_parameters["frame_source"]["parameters"]["path"].IsSequence())
-        reader = std::unique_ptr<MultiImageReader>(new MultiImageReader(
-            general_parameters["frame_source"]["parameters"]["path"]
-                .as<std::vector<std::string>>()));
-      else
-        reader = std::unique_ptr<ImageReader>(new ImageReader(
-            general_parameters["frame_source"]["parameters"]["path"]
-                .as<std::string>()));
 
         if (reader_type == "kinect") {
             auto kinect_config =
