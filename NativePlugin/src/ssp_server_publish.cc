@@ -23,14 +23,10 @@
 #include <encoders/libav_encoder.h>
 #include <encoders/null_encoder.h>
 #include <encoders/zdepth_encoder.h>
-#include <readers/video_file_reader.h>
-#include <readers/multi_image_reader.h>
 
-#include <readers/kinect_reader.h>
+#include <k4a_reader.h>
 #include <utils/kinect_utils.h>
-
 int main(int argc, char *argv[]) {
-
   spdlog::set_level(spdlog::level::debug);
 
   srand(time(NULL) * getpid());
