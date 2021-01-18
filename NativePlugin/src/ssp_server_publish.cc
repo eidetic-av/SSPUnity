@@ -70,29 +70,22 @@ int main(int argc, char *argv[]) {
             general_parameters["frame_source"]["parameters"]["path"]
                 .as<std::string>()));
 
-    } else if (reader_type == "video") {
-      std::string path =
-          general_parameters["frame_source"]["parameters"]["path"]
-              .as<std::string>();
-      if (general_parameters["frame_source"]["parameters"]["streams"]
-              .IsDefined()) {
-        std::vector<unsigned int> streams =
-            general_parameters["frame_source"]["parameters"]["streams"]
-                .as<std::vector<unsigned int>>();
-        reader = std::unique_ptr<VideoFileReader>(
-            new VideoFileReader(path, streams));
+        if (reader_type == "kinect") {
+            auto kinect_config =
+                general_parameters["frame_source"]["parameters"];
+            ExtendedAzureConfig c = BuildKinectConfigFromYAML(kinect_config);
+            bool cull_background = false;
+            if (!kinect_config["cull_background"].IsDefined()) {
+                spdlog::warn(
+                    "Missing key: \"cull_background\", Using default: "
+                    "false");
       } else {
-        reader = std::unique_ptr<VideoFileReader>(new VideoFileReader(path));
+                cull_background = kinect_config["cull_background"].as<bool>();
       }
-
-    } else if (reader_type == "kinect") {
-      ExtendedAzureConfig c = BuildKinectConfigFromYAML(
-          general_parameters["frame_source"]["parameters"]);
-      reader = std::unique_ptr<KinectReader>(new KinectReader(0, c));
+            reader = std::unique_ptr<K4AReader>(
+                new K4AReader(0, c, cull_background));
     } else {
-      spdlog::error("Unknown reader type: \"{}\". Supported types are "
-                    "\"frames\", \"video\" and \"kinect\"",
-                    reader_type);
+            spdlog::error("Unknown reader type: {}", reader_type);
       exit(1);
     }
 
