@@ -10,7 +10,7 @@
 #include <io.h>
 #else
 #include <unistd.h>
-#endif 
+#endif
 
 #include <opencv2/imgproc.hpp>
 #include <zmq.hpp>
@@ -23,45 +23,59 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-#include <utils/logger.h>
-
-#include <readers/network_reader.h>
-#include <utils/video_utils.h>
 #include <utils/image_converter.h>
+#include <utils/logger.h>
+#include <utils/video_utils.h>
 
-NetworkReader* reader;
-ZDepthDecoder* decoder;
+#include "../include/network_subscriber.h"
+#include "../include/libav_raw_decoder.h"
+#include "../include/zdepth_raw_decoder.h"
+
+NetworkSubscriber* subscriber;
+LibAvRawDecoder* libav_decoder;
+ZDepthRawDecoder* zdepth_decoder;
 
 extern "C" {
-    __declspec (dllexport) void InitNetworkReader(int port)
-    {
-        spdlog::set_level(spdlog::level::debug);
-        av_log_set_level(AV_LOG_QUIET);
+__declspec(dllexport) void InitSubscriber(const char* host, int port, int poll_timeout_ms) {
+    spdlog::set_level(spdlog::level::debug);
+    av_log_set_level(AV_LOG_QUIET);
 
-        srand(time(NULL) * getpid());
+    srand(time(NULL) * getpid());
 
-        reader = new NetworkReader(port);
-        reader->init();
+    spdlog::info("Initialising network subscriber with address: {}:{}", host,
+                 port);
 
-        decoder = new ZDepthDecoder();
+    subscriber = new NetworkSubscriber(host, port, poll_timeout_ms);
+    subscriber->init();
+
+    zdepth_decoder = new ZDepthRawDecoder();
+    libav_decoder = new LibAvRawDecoder();
+
+    spdlog::info(" ... success!");
+}
+
+__declspec(dllexport) void Close() {
+    subscriber->~NetworkSubscriber();
+    spdlog::info("Destroyed subscriber");
+}
+
+__declspec(dllexport) bool GetNextFramePtrs(void*& depth_frame_ptr,
+                                            void*& color_frame_ptr) {
+    if (!subscriber->HasNextFrame()) return false;
+
+    subscriber->NextFrame();
+    std::vector<FrameStruct> f_list = subscriber->GetCurrentFrame();
+
+    for (FrameStruct f : f_list) {
+        if (f.frame_type == 0) {
+            libav_decoder->Init(getParams(f));
+            color_frame_ptr = libav_decoder->DecodeRaw(f);
+        } else if (f.frame_type == 1) {
+            zdepth_decoder->Init(f.codec_data.data);
+            depth_frame_ptr = zdepth_decoder->DecodeRaw(f);
+        }
     }
 
-    __declspec (dllexport) void Close()
-    {
-        reader->~NetworkReader();
-    }
-
-    __declspec (dllexport) bool ReaderHasNextFrame() {
-        return reader->HasNextFrame();
-    }
-
-    // TODO change this to set two void pointers as reference instead
-    // one for depth and another for colour
-    __declspec (dllexport) void* GetNextFramePtr(u_long &frameAge)
-    {
-        reader->NextFrame();
-        FrameStruct f = reader->GetCurrentFrame()[0];
-        frameAge = f.timestamps.back() - f.timestamps.at(1);;
-        return decoder->DecodeRaw(f);
-    }
+    return true;
+}
 }
