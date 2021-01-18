@@ -1,4 +1,4 @@
-﻿#pragma kernel ComputePointCloud
+﻿#pragma kernel DepthTransfer;
 
 uint Width;
 uint Height;
@@ -9,15 +9,14 @@ StructuredBuffer<int> DepthBuffer;
 StructuredBuffer<float2> Depth2DTo3DBuffer;
 
 RWTexture2D<float4> Positions;
-RWTexture2D<float4> Colors;
 
 [numthreads(64,1,1)]
-void ComputePointCloud (uint idx : SV_DispatchThreadID)
+void DepthTransfer (uint idx : SV_DispatchThreadID)
 {
     // each index of the depth buffer holds two
     // 16-bit unsigned shorts
-    uint depth_a = (DepthBuffer[idx] >> 16); 
-    uint depth_b = (DepthBuffer[idx] & 0x0000ff00);
+    uint depth_a = (DepthBuffer[idx] & 0xFFFF); 
+    uint depth_b = (DepthBuffer[idx] >> 16);
 
     // convert uint16_t depth (in millimetres)
     // into a Unity world space float (in metres)
@@ -66,8 +65,4 @@ void ComputePointCloud (uint idx : SV_DispatchThreadID)
     // pack into a 128-bit RGBA float Texture
     Positions[coord_a] = float4(x_a, y_a, z_a, alive_a);
     Positions[coord_b] = float4(x_b, y_b, z_b, alive_b);
-
-    // white only for now
-    Colors[coord_a] = float4(1.f, 1.f, 1.f, 1.f);
-    Colors[coord_b] = float4(1.f, 1.f, 1.f, 1.f);
 }
