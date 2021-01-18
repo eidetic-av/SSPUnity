@@ -1,8 +1,8 @@
 {
-    "name": "com.eidetic.sensorstreampipe.Runtime",
+    "name": "Eidetic.SensorStreamPipe",
     "rootNamespace": "",
     "references": [
-        "com.Eidetic.URack.Runtime"
+        "GUID:63dd42ed31a81f048a7cd449590c623c"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
