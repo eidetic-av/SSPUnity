@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
@@ -16,18 +16,21 @@ namespace Eidetic.SensorStreamPipe
         public string LutName = "NFOV_UNBINNED";
 
         [DllImport("ssp_client_plugin")]
-        static extern void InitNetworkReader(int port);
+        static extern void InitSubscriber(string host, int port, int pollTimeoutMs);
 
         [DllImport("ssp_client_plugin")]
         static extern void Close();
 
         [DllImport("ssp_client_plugin")]
-        static extern bool ReaderHasNextFrame();
+        static extern bool GetNextFramePtrs(out IntPtr depthFramePtr, out IntPtr colorFramePtr);
 
-        [DllImport("ssp_client_plugin")]
-        static extern IntPtr GetNextFramePtr(out ulong frameAge);
+        const int DepthFrameWidth = 640;
+        const int DepthFrameHeight = 576;
+        const int DepthFrameSize = DepthFrameWidth * DepthFrameHeight;
 
-        const int FrameSize = 640 * 576;
+        const int ColorFrameWidth = 1280;
+        const int ColorFrameHeight = 720;
+        const int ColorFrameSize = ColorFrameWidth * ColorFrameHeight;
 
         Thread ReaderThread;
         object ThreadLock = new object();
@@ -46,18 +49,23 @@ namespace Eidetic.SensorStreamPipe
 
         public PointCloud PointCloud;
 
-        public bool DispatchShaderUpdate = false;
+        ComputeBuffer DepthBuffer;
+        ComputeBuffer Depth2DTo3DBuffer;
+        ComputeShader DepthTransferShader;
+    
+        bool ClientActive;
+        bool DispatchUpdate;
     
         void Start()
         {
-            InitNetworkReader(9999);
-            Debug("Initialised Network Reader");
+            InitSubscriber("localhost", 9999, 1);
+            Debug("Initialised Subscriber");
         
-            TransferShader = Resources.Load("SSPPointCloud") as ComputeShader;
             PointCloud = PointCloud.CreateInstance();
 
+            DepthTransferShader = Resources.Load("DepthTransfer") as ComputeShader;
             // depthbuffer length is halved because each 32-bit entry holds two shorts
-            DepthBuffer = new ComputeBuffer(FrameSize / 2, 4);
+            DepthBuffer = new ComputeBuffer(DepthFrameSize / 2, 4);
 
             var lutAsset = Resources.Load(LutName) as TextAsset;
             if (lutAsset == null)
@@ -86,14 +94,10 @@ namespace Eidetic.SensorStreamPipe
 
             Debug($"Added {i} entries into the lookup table.");
 
-            Depth2DTo3DBuffer = new ComputeBuffer(FrameSize, sizeof(float) * 2);
+            Depth2DTo3DBuffer = new ComputeBuffer(DepthFrameSize, sizeof(float) * 2);
             Depth2DTo3DBuffer.SetData(lookupTable);
         
-            TransferShader.SetBuffer(0, "Depth2DTo3DBuffer", Depth2DTo3DBuffer);
-
-            // var sensorThread = new System.Threading.Thread(CheckForSensorFrame);
-            // ClientActive = true;
-            // sensorThread.Start();
+            DepthTransferShader.SetBuffer(0, "Depth2DTo3DBuffer", Depth2DTo3DBuffer);
         }
 
         void OnDestroy()
@@ -103,73 +107,45 @@ namespace Eidetic.SensorStreamPipe
             Close();
         }
 
-        void CheckForSensorFrame()
-        {
-            while(ClientActive)
-            {
-                if (DispatchShaderUpdate) continue;
-                // ReaderHasNextFrame is blocking, so it needs to be on a thread
-                if (ReaderHasNextFrame())
-                {
-                    Debug("Received frame");
-                    DispatchShaderUpdate = true;
-                }
-            }
-            // DepthBuffer.Release();
-            // Close();
-        }
-
         void Update()
         {
-            if (ReaderHasNextFrame())
-                // if (DispatchShaderUpdate)
+            var newFrame = GetNextFramePtrs(out IntPtr depthFramePtr, out IntPtr colorFramePtr);
+            if (!newFrame) return;
+
+            if (depthFramePtr != IntPtr.Zero)
             {
                 // Set the depth buffer from the plugin memory location
-                SetUnmanagedData(DepthBuffer, GetNextFramePtr(out ulong frameAge), FrameSize / 2, 4);
-                // if (frameAge > 500)
-                // {
-                //     Debug($"Frame was {frameAge}ms old, discard it");
-                //     return;
-                // }
+                SetUnmanagedData(DepthBuffer, depthFramePtr, DepthFrameSize / 2, 4);
             
-                Debug("Successfully set unmanaged data to frame pointer");
+                // allocate the data for the depth shader
+                DepthTransferShader.SetInt("Width", DepthFrameWidth);
+                DepthTransferShader.SetInt("Height", DepthFrameHeight);
+                DepthTransferShader.SetVector("ThresholdX", ThresholdX); 
+                DepthTransferShader.SetVector("ThresholdY", ThresholdY); 
+                DepthTransferShader.SetVector("ThresholdZ", ThresholdZ); 
+                DepthTransferShader.SetBuffer(0, "DepthBuffer", DepthBuffer);
 
-                int width = 640;
-                int height = 576;
-            
-                // allocate the data for the GPU
-                TransferShader.SetInt("Width", width);
-                TransferShader.SetInt("Height", height);
-                TransferShader.SetVector("ThresholdX", ThresholdX); 
-                TransferShader.SetVector("ThresholdY", ThresholdY); 
-                TransferShader.SetVector("ThresholdZ", ThresholdZ); 
-                TransferShader.SetBuffer(0, "DepthBuffer", DepthBuffer);
-
-                // create the output textures
-                var positionsRt = new RenderTexture(width, height, 24, R32G32B32A32_SFloat);
+                // create the output texture
+                var positionsRt = new RenderTexture(DepthFrameWidth, DepthFrameHeight, 24, R32G32B32A32_SFloat);
                 positionsRt.enableRandomWrite = true;
                 positionsRt.Create();
-                TransferShader.SetTexture(0, "Positions", positionsRt, 0);
+                DepthTransferShader.SetTexture(0, "Positions", positionsRt, 0);
 
-                var colorsRt = new RenderTexture(width, height, 24, R32G32B32A32_SFloat);
-                colorsRt.enableRandomWrite = true;
-                colorsRt.Create();
-                TransferShader.SetTexture(0, "Colors", colorsRt, 0);
-        
-                // dispatch the shader
-                int gfxThreadWidth = (width * height) / 2 / 64;
-                TransferShader.Dispatch(0, gfxThreadWidth, 1, 1);
-
+                // dispatch the depth shader
+                int gfxThreadWidth = DepthFrameSize / 2 / 64;
+                DepthTransferShader.Dispatch(0, gfxThreadWidth, 1, 1);
                 // set the result to the pointcloud
                 PointCloud.SetPositionMap(positionsRt);
-                PointCloud.SetColorMap(colorsRt);
+            }
 
-                // if (RawImage != null)
-                //     RawImage.texture = PointCloud.PositionMap;
-
-                // cleanup
-                Destroy(positionsRt);
-                DispatchShaderUpdate = false;
+            if (colorFramePtr != IntPtr.Zero)
+            {
+                // create a color texture with the incoming colors
+                var colorsTexture = new Texture2D(DepthFrameWidth, DepthFrameHeight, TextureFormat.RGBA32, false);
+                colorsTexture.LoadRawTextureData(colorFramePtr, DepthFrameSize * 4);
+                colorsTexture.Apply();
+                // // set the results to the pointcloud
+                PointCloud.SetColorMap(colorsTexture);
             }
         }
 
