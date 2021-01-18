@@ -38,25 +38,24 @@ int main(int argc, char *argv[]) {
   srand(time(NULL) * getpid());
 
   try {
-
-    if (argc < 3) {
-      std::cerr << "Usage: ssp_client_subscriber <host> <port>"
-                << std::endl;
-      return 1;
-    }
     std::string log_level = "debug";
     std::string log_file = "";
 
-    std::string host = argv[1];
-    int port = std::stoi(argv[2]);
-    NetworkSubscriber subscriber(host, port);
+    std::string host = "localhost";
+    if (argc > 1) host = argv[1];
+    int port = 9999;
+    if (argc > 2) port = std::stoi(argv[2]);
+
+    NetworkSubscriber subscriber(host, port, 5);
 
     subscriber.init();
 
     std::unordered_map<std::string, std::shared_ptr<IDecoder>> decoders;
 
     bool imgChanged = false;
-    while (subscriber.HasNextFrame()) {
+    while (1) {
+      if (!subscriber.HasNextFrame()) continue;
+
       subscriber.NextFrame();
       std::vector<FrameStruct> f_list = subscriber.GetCurrentFrame();
 

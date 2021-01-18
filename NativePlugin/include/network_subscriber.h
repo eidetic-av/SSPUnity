@@ -14,8 +14,6 @@
 
 #include "/Sensor-Stream-Pipe/utils/video_utils.h""
 
-#define POLL_TIMEOUT_MS 500
-
 class NetworkSubscriber {
 
 private:
@@ -37,7 +35,7 @@ private:
   zmq::poller_t<> poller_;
 
 public:
-  NetworkSubscriber(std::string host, int port);
+  NetworkSubscriber(std::string host, int port, int poll_timeout_ms);
   void init();
 
   ~NetworkSubscriber();
