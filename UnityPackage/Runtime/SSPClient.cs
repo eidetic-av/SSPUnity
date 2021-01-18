@@ -32,14 +32,6 @@ namespace Eidetic.SensorStreamPipe
         const int ColorFrameHeight = 720;
         const int ColorFrameSize = ColorFrameWidth * ColorFrameHeight;
 
-        Thread ReaderThread;
-        object ThreadLock = new object();
-        bool ClientActive;
-        bool UpdateFrame;
-        ComputeBuffer DepthBuffer;
-        ComputeBuffer Depth2DTo3DBuffer;
-        ComputeShader TransferShader;
-
         public Vector2 ThresholdX = new Vector2(-10f, 10f);
         public Vector2 ThresholdY = new Vector2(-10f, 10f);
         public Vector2 ThresholdZ = new Vector2(0, 12f);
