@@ -1,3 +1,4 @@
+﻿using Eidetic.PointClouds;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -5,8 +6,6 @@ using System.Threading;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using static UnityEngine.Experimental.Rendering.GraphicsFormat;
-
-using Eidetic.URack;
 
 namespace Eidetic.SensorStreamPipe
 {
@@ -44,7 +43,7 @@ namespace Eidetic.SensorStreamPipe
         ComputeBuffer DepthBuffer;
         ComputeBuffer Depth2DTo3DBuffer;
         ComputeShader DepthTransferShader;
-    
+
         bool ClientActive;
         bool DispatchUpdate;
     
@@ -52,9 +51,9 @@ namespace Eidetic.SensorStreamPipe
         {
             InitSubscriber("localhost", 9999, 1);
             Debug("Initialised Subscriber");
-        
-            PointCloud = PointCloud.CreateInstance();
 
+            PointCloud = PointCloud.CreateInstance();
+        
             DepthTransferShader = Resources.Load("DepthTransfer") as ComputeShader;
             // depthbuffer length is halved because each 32-bit entry holds two shorts
             DepthBuffer = new ComputeBuffer(DepthFrameSize / 2, 4);
@@ -122,7 +121,7 @@ namespace Eidetic.SensorStreamPipe
                 positionsRt.enableRandomWrite = true;
                 positionsRt.Create();
                 DepthTransferShader.SetTexture(0, "Positions", positionsRt, 0);
-
+        
                 // dispatch the depth shader
                 int gfxThreadWidth = DepthFrameSize / 2 / 64;
                 DepthTransferShader.Dispatch(0, gfxThreadWidth, 1, 1);

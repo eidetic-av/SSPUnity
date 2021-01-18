@@ -19,6 +19,6 @@
     "url": "https://github.com/eidetic-av/SSPUnity"
   },
   "dependencies": {
-    "com.eidetic.urack":"0.0.1"
+    "com.eidetic.pointclouds": "0.0.1"
   }
 }
