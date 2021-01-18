@@ -3,6 +3,7 @@ CMakeFiles/
 cmake-*/
 .idea/
 .vs/
+.vscode/
 
 *~*
 
