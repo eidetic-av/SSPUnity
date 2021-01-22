@@ -9,10 +9,10 @@
 // https://stackoverflow.com/questions/27442885/syntax-error-with-stdnumeric-limitsmax
 #include <zmq_addon.hpp>
 
-#include <structs/frame_struct.hpp>
 #include <readers/ireader.h>
+#include <structs/frame_struct.hpp>
 
-#include "/Sensor-Stream-Pipe/utils/video_utils.h""
+#include <utils/video_utils.h>
 
 class NetworkSubscriber {
 
@@ -47,5 +47,4 @@ public:
   std::vector<FrameStruct> GetCurrentFrame();
 
   unsigned int GetCurrentFrameId();
-
 };
