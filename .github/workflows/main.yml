@@ -1,0 +1,30 @@
+name: Push to Unity package repository
+
+on: [push]
+
+jobs:
+        create-package-repo:
+                runs-on: ubuntu-latest
+                steps:
+                        - name: Install SSH key
+                          uses: shimataro/ssh-key-action@v2
+                          with:
+                                  key: ${{ secrets.SSH_KEY }}
+                                  known_hosts: ${{ secrets.KNOWN_HOSTS }}
+                        - uses: actions/checkout@v2 
+                          with:
+                                  lfs: true
+                        - name: Update current package repo
+                          run: |
+                               commit_message=$(git log -1 --oneline | sed -e 's/([^()]*)//g')
+                               git config --global user.email "matth@eidetic.net.au"
+                               git config --global user.name "Matt Hughes"
+                               git clone git@github.com:eidetic-av/SSPUnityPackage.git
+                               rm ./SSPUnityPackage/* -r
+                               cp ./UnityPackage/* ./SSPUnityPackage/ -r
+                               cd ./SSPUnityPackage
+                               git add .
+                               git commit -m "Auto-commit: $commit_message" || true
+                               commit_branch=${GITHUB_REF#refs/heads/}
+                               git push -u origin $commit_branch || true
+
