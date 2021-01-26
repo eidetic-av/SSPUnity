@@ -1,0 +1,68 @@
+#+TITLE: Sensor Stream Pipe for Unity
+* Introduction
+*SSPUnity* integrates the [[https://github.com/moetsi/Sensor-Stream-Pipe][Sensor Stream Pipe]] RGB-D streaming server project into
+Unity.
+
+It allows you to host an Azure Kinect server that publishes depth and colour
+frames to an arbitrary number of clients on a network that unpack those frames
+from inside Unity.
+
+I'm using this to stream frames from a Windows PC hosting the depth camera to
+multiple Android devices connected over a wireless local area network. The
+compression of both depth and colour frames is efficient enough that streaming
+is possible over the internet too, which makes this a viable solution for
+transmitting point–clouds in real–time over the web.
+* Structure
+This repository contains two directories:
+
+The *NativePlugin* directory contains source for extensions to Sensor Stream Pipe
+written in C++. This includes a publishing server (/ssp_server_publish/) and a
+shared library that's used as a Unity plugin (/ssp_client_plugin/).
+
+The *UnityPackage* directory contains the Unity client source, along with builds
+of the shared library for Android and Windows. It is automatically mirrored into
+a separate repository (noted below) that allows it to be imported using the
+Unity package manager.
+* Usage
+To use the plugin inside Unity, add the following repository in the Unity
+package manager:
+#+begin_source
+https://github.com/eidetic-av/SSPUnityPackage.git
+#+end_source
+This package is always up–to–date with the master branch.
+
+The ~SSPClient~ prefab can be added to your scene, which will subscribe to new
+frames at the specified host and update a point–cloud accordingly, which can be
+used inside scripts or within the VFX Graph.
+
+On your host machine, run /ssp_server_publish/. Configuration for this server can
+be set in ~config.yaml~.
+* Building
+First, you need to clone the source for the Sensor Stream Pipe project, and set
+the ~SSP_DIR~ variable (either in the session or as an environment variable). Make
+sure that project builds first, as SSPUnity requires all of the same
+dependencies.
+
+This project uses CMake to configure. Modify ~CMakeLists.txt~ to point to your
+appropriate lib and include directories.
+*** Windows
+To build for Windows — assuming you have Visual Studio 2019 installed — do the
+following inside the /NativePlugin/ directory.
+#+begin_src sh
+mkdir build && cd build
+cmake ..
+cmake --build . --config Release
+#+end_src
+This will build the server and the plugin dll.
+*** Android
+To build the plugin .so for Android, you need to have Ninja installed, and an
+Android NDK located at ~$NDK~. Set the ABI and platform accordingly.
+#+begin_src sh
+mkdir android-build && cd android-build
+cmake .. -G Ninja \
+    -DANDROID_ABI="armeabi-v7a" \
+    -DANDROID_PLATFORM="android-26" \
+    -DANDROID_NDK="$NDK" \
+    -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+cmake --build .
+#+end_src
