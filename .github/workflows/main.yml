@@ -23,6 +23,8 @@ jobs:
                                rm ./SSPUnityPackage/* -r
                                cp ./UnityPackage/* ./SSPUnityPackage/ -r
                                cd ./SSPUnityPackage
+                               touch README.md
+                               echo "This repository is auto-generated. See https://github.com/eidetic-av/SSPUnity for more info." >> README.md
                                git add .
                                git commit -m "Auto-commit: $commit_message" || true
                                commit_branch=${GITHUB_REF#refs/heads/}
