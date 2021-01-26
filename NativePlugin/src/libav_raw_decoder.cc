@@ -3,6 +3,7 @@
 //
 
 #include "../include/libav_raw_decoder.h"
+#include <libavcodec/codec_id.h>
 
 LibAvRawDecoder::LibAvRawDecoder() {}
 
@@ -20,11 +21,32 @@ void LibAvRawDecoder::Init(AVCodecParameters* codec_parameters) {
         exit(1);
     }
 
-    if (avcodec_parameters_to_context(codec_context_.get(), codec_parameters) <
-        0) {
-        spdlog::error("Failed to copy codec params to codec context.");
-        exit(1);
-    }
+  // the following is needed to successfully unpack on android
+  // using avcodec_parameters_to_context fails,
+  // so publisher must match the following settings for now
+
+  codec_context_->codec_type = AVMEDIA_TYPE_VIDEO;
+  codec_context_->codec_id = AV_CODEC_ID_H264;
+  codec_context_->pix_fmt = AV_PIX_FMT_YUV420P;
+  codec_context_->width = 1280;
+  codec_context_->height = 720;
+  codec_context_->bit_rate = 80000;
+  codec_context_->time_base.num = 1;
+  codec_context_->time_base.den = 30;
+  codec_context_->framerate.num = 1;
+  codec_context_->framerate.den = 30;
+  codec_context_->rc_max_rate = 0;
+  codec_context_->bit_rate_tolerance = 0;
+  codec_context_->rc_buffer_size = 0;
+  codec_context_->gop_size = 0;
+  codec_context_->max_b_frames = 0;
+  codec_context_->delay = 0;
+
+  // if (avcodec_parameters_to_context(codec_context_.get(), codec_parameters) <
+  //     0) {
+  //   spdlog::error("Failed to copy codec params to codec context.");
+  //   exit(1);
+  // }
 
     if (avcodec_open2(codec_context_.get(), codec_.get(), NULL) < 0) {
         spdlog::error("Failed to open codec through avcodec_open2.");

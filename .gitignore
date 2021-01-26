@@ -1,9 +1,11 @@
-build/
 CMakeFiles/
 cmake-*/
 .idea/
 .vs/
 .vscode/
+
+build/
+android-build/
 
 *~*
 

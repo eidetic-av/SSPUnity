@@ -31,12 +31,18 @@ extern "C" {
 #include "../include/libav_raw_decoder.h"
 #include "../include/zdepth_raw_decoder.h"
 
-NetworkSubscriber* subscriber;
-LibAvRawDecoder* libav_decoder;
-ZDepthRawDecoder* zdepth_decoder;
+NetworkSubscriber *subscriber;
+LibAvRawDecoder *libav_decoder;
+ZDepthRawDecoder *zdepth_decoder;
+
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
 
 extern "C" {
-__declspec(dllexport) void InitSubscriber(const char* host, int port, int poll_timeout_ms) {
+EXPORT void InitSubscriber(const char *host, int port, int poll_timeout_ms) {
     spdlog::set_level(spdlog::level::debug);
     av_log_set_level(AV_LOG_QUIET);
 
@@ -54,13 +60,12 @@ __declspec(dllexport) void InitSubscriber(const char* host, int port, int poll_t
     spdlog::info(" ... success!");
 }
 
-__declspec(dllexport) void Close() {
+EXPORT void Close() {
     subscriber->~NetworkSubscriber();
     spdlog::info("Destroyed subscriber");
 }
 
-__declspec(dllexport) bool GetNextFramePtrs(void*& depth_frame_ptr,
-                                            void*& color_frame_ptr) {
+EXPORT bool GetNextFramePtrs(void *&depth_frame_ptr, void *&color_frame_ptr) {
     if (!subscriber->HasNextFrame()) return false;
 
     subscriber->NextFrame();
