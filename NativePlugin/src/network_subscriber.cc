@@ -25,12 +25,11 @@ void NetworkSubscriber::init() {
         new zmq::socket_t(*context_, zmq::socket_type::sub));
 
     // subscribe to all incoming messages
-    socket_->setsockopt(ZMQ_SUBSCRIBE, "", 0);
+    socket_->set(zmq::sockopt::subscribe, "");
 
     // the "conflate" option at "1" makes sure the subscriber only pulls the
     // latest frame (to reduce latency)
-    int conflate_true = 1;
-    socket_->setsockopt(ZMQ_CONFLATE, &conflate_true, sizeof(conflate_true));
+    socket_->set(zmq::sockopt::conflate, 1);
 
     // initialise the poller that checks if the stream has been updated
     poller_.add(zmq::socket_ref(zmq::from_handle, socket_.get()->handle()),
@@ -54,7 +53,7 @@ bool NetworkSubscriber::HasNextFrame() {
 
 void NetworkSubscriber::NextFrame() {
     zmq::message_t result_raw;
-    socket_->recv(&result_raw);
+    socket_->recv(result_raw);
 
     if (rec_frames_ == 0) {
         last_time_ = CurrentTimeMs();
