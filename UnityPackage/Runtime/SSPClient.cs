@@ -11,8 +11,11 @@ namespace Eidetic.SensorStreamPipe
 {
     public class SSPClient : MonoBehaviour
     {
-        public bool DebugLog = true;
+        public string Host = "localhost";
+        public int HostPort = 9999;
+
         public string LutName = "NFOV_UNBINNED";
+        public bool DebugLog = true;
 
         [DllImport("ssp_client_plugin")]
         static extern void InitSubscriber(string host, int port, int pollTimeoutMs);
@@ -49,7 +52,7 @@ namespace Eidetic.SensorStreamPipe
     
         void Start()
         {
-            InitSubscriber("localhost", 9999, 1);
+            InitSubscriber(Host, HostPort, 1);
             Debug("Initialised Subscriber");
 
             PointCloud = PointCloud.CreateInstance();
@@ -102,6 +105,7 @@ namespace Eidetic.SensorStreamPipe
         {
             var newFrame = GetNextFramePtrs(out IntPtr depthFramePtr, out IntPtr colorFramePtr);
             if (!newFrame) return;
+            Debug("Updating textures.");
 
             if (depthFramePtr != IntPtr.Zero)
             {
@@ -127,8 +131,9 @@ namespace Eidetic.SensorStreamPipe
                 DepthTransferShader.Dispatch(0, gfxThreadWidth, 1, 1);
                 // set the result to the pointcloud
                 PointCloud.SetPositionMap(positionsRt);
+                Debug("Set depth.");
             }
-
+            
             if (colorFramePtr != IntPtr.Zero)
             {
                 // create a color texture with the incoming colors
@@ -137,6 +142,7 @@ namespace Eidetic.SensorStreamPipe
                 colorsTexture.Apply();
                 // // set the results to the pointcloud
                 PointCloud.SetColorMap(colorsTexture);
+                Debug("Set colour.");
             }
         }
 
