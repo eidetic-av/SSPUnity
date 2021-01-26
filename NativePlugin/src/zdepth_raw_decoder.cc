@@ -14,12 +14,12 @@ void ZDepthRawDecoder::Init(std::vector<unsigned char> parameter_data) {
 
 cv::Mat ZDepthRawDecoder::Decode(FrameStruct& frame) {
 
-  //TODO: do not crash on failure, wait for I Frame if mid stream
   zdepth::DepthResult result =
       decompressor_.Decompress(frame.frame, width_, height_, decompressed_buffer_);
   if (result != zdepth::DepthResult::Success) {
-    // Handle input error
-    spdlog::debug("Input error!!");
+    spdlog::error("Zdepth decompression error: {}", DepthResultString(result));
+    // Return a blank texture on an error
+    return cv::Mat::zeros(height_, width_, CV_16UC1);
   }
 
   return cv::Mat(height_, width_, CV_16UC1, decompressed_buffer_.data(),
