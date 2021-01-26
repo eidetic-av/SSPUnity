@@ -11,7 +11,8 @@ I'm using this to stream frames from a Windows PC hosting the depth camera to
 multiple Android devices connected over a wireless local area network. The
 compression of both depth and colour frames is efficient enough that streaming
 is possible over the internet too, which makes this a viable solution for
-transmitting point–clouds in real–time over the web.
+transmitting point–clouds in real–time over the web and rendering them inside 
+Unity.
 * Structure
 This repository contains two directories:
 
