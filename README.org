@@ -26,9 +26,9 @@ Unity package manager.
 * Usage
 To use the plugin inside Unity, add the following repository in the Unity
 package manager:
-#+begin_source
+#+begin_src
 https://github.com/eidetic-av/SSPUnityPackage.git
-#+end_source
+#+end_src
 This package is always up–to–date with the master branch.
 
 The ~SSPClient~ prefab can be added to your scene, which will subscribe to new
