@@ -43,12 +43,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0f8ed98c85e54684981f1248512ccd81, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  DebugLog: 1
-  LutName: NFOV_UNBINNED
+  Active: 0
+  DebugLog: 0
   ThresholdX: {x: -10, y: 10}
   ThresholdY: {x: -10, y: 10}
   ThresholdZ: {x: 0.5, y: 12}
   Translation: {x: 0, y: 0, z: 0}
   Rotation: {x: 0, y: 0, z: 0}
   PointCloud: {fileID: 0}
-  DispatchShaderUpdate: 0
+  DoInit: 0
+  Local: 0
+  Host: 10.147.19.55
+  Sensor: 1

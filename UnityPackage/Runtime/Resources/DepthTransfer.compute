@@ -1,7 +1,9 @@
-﻿#pragma kernel DepthTransfer;
+﻿#pragma kernel DepthTransfer
 
 uint Width;
 uint Height;
+float3 Translation;
+float4 Rotation;
 float2 ThresholdX;
 float2 ThresholdY;
 float2 ThresholdZ;
@@ -11,7 +13,7 @@ StructuredBuffer<float2> Depth2DTo3DBuffer;
 RWTexture2D<float4> Positions;
 
 [numthreads(64,1,1)]
-void DepthTransfer (uint idx : SV_DispatchThreadID)
+void DepthTransfer(uint idx : SV_DispatchThreadID)
 {
     // each index of the depth buffer holds two
     // 16-bit unsigned shorts
@@ -62,7 +64,19 @@ void DepthTransfer (uint idx : SV_DispatchThreadID)
         z_b < ThresholdZ.x || z_b > ThresholdZ.y)
         alive_b = 0.f;
 
-    // pack into a 128-bit RGBA float Texture
-    Positions[coord_a] = float4(x_a, y_a, z_a, alive_a);
-    Positions[coord_b] = float4(x_b, y_b, z_b, alive_b);
+    // pack into a vector
+    float3 pos_a = float3(x_a, y_a, z_a);
+    float3 pos_b = float3(x_b, y_b, z_b);
+
+    // perform any rotation
+    pos_a = pos_a + 2.0 * cross(cross(pos_a, Rotation.xyz) + Rotation.w * pos_a, Rotation.xyz);
+    pos_b = pos_b + 2.0 * cross(cross(pos_b, Rotation.xyz) + Rotation.w * pos_b, Rotation.xyz);
+
+    // then add any translation
+    pos_a = pos_a + Translation;
+    pos_b = pos_b + Translation;
+
+    // pack into a 128-bit RGBA float Texture along with the alive in alpha channel
+    Positions[coord_a] = float4(pos_a.xyz, alive_a);
+    Positions[coord_b] = float4(pos_b.xyz, alive_b);
 }

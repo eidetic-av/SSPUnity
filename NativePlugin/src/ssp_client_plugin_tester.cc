@@ -30,44 +30,55 @@ extern "C" {
 #include "../include/network_subscriber.h"
 
 // External symbols
-typedef void(__stdcall *f_init_subscriber)(const char *host, int port, int poll_timeout_ms);
-typedef void(__stdcall *f_close_subscriber)();
-typedef bool(__stdcall *f_get_next_frame_ptrs)(void *&depth_frame_ptr,
-                                               void *&color_frame_ptr);
+typedef void(__stdcall *f_init_subscriber)(const char *host, int port,
+                                           int poll_timeout_ms,
+                                           int &subscriber_idx);
+typedef void(__stdcall *f_close_subscriber)(int subscriber_idx);
+typedef bool(__stdcall *f_get_next_frame_ptrs)(int subscriber_idx,
+                                               void *&depth_frame_ptr,
+                                               void *&color_frame_ptr,
+                                               void *&joint_data_ptr);
 
 int main(int argc, char *argv[]) {
-    spdlog::set_level(spdlog::level::debug);
-    av_log_set_level(AV_LOG_QUIET);
 
-    srand(time(NULL) * getpid());
+  spdlog::set_level(spdlog::level::debug);
 
-    HINSTANCE hGetProcIDDLL = LoadLibrary("ssp_client_plugin.dll");
-    if (!hGetProcIDDLL) {
-        spdlog::error("Failed to load Plugin dll.");
-        return EXIT_FAILURE;
+  av_log_set_level(AV_LOG_QUIET);
+
+  srand(time(NULL) * getpid());
+
+  HINSTANCE hGetProcIDDLL = LoadLibrary("ssp_client_plugin.dll");
+  if (!hGetProcIDDLL) {
+    spdlog::error("Failed to load Plugin dll.");
+    return EXIT_FAILURE;
+  }
+  spdlog::info("Successfully loaded plugin dll");
+
+  // load external functions from dll
+  f_init_subscriber init_subscriber =
+      (f_init_subscriber)GetProcAddress(hGetProcIDDLL, "InitSubscriber");
+  f_close_subscriber close_subscriber =
+      (f_close_subscriber)GetProcAddress(hGetProcIDDLL, "Close");
+  f_get_next_frame_ptrs get_next_frame_ptrs =
+      (f_get_next_frame_ptrs)GetProcAddress(hGetProcIDDLL, "GetNextFramePtrs");
+
+  int subscriber_idx;
+  init_subscriber(argv[1], 9999, 5, subscriber_idx);
+  spdlog::debug("returned subscriber at {}", subscriber_idx);
+
+  void *depth_frame_ptr;
+  void *color_frame_ptr;
+  void *joint_data;
+
+  while (1) {
+    auto new_frame = get_next_frame_ptrs(subscriber_idx, depth_frame_ptr,
+                                         color_frame_ptr, joint_data);
+    if (new_frame) {
+      spdlog::debug("new frame");
     }
-    spdlog::info("Successfully loaded plugin dll");
+  }
 
-    // load external functions from dll
-    f_init_subscriber init_subscriber =
-        (f_init_subscriber)GetProcAddress(hGetProcIDDLL, "InitSubscriber");
-    f_close_subscriber close_subscriber =
-        (f_close_subscriber)GetProcAddress(hGetProcIDDLL, "Close");
-    f_get_next_frame_ptrs get_next_frame_ptrs =
-        (f_get_next_frame_ptrs)GetProcAddress(hGetProcIDDLL,
-                                              "GetNextFramePtrs");
+  close_subscriber(subscriber_idx);
 
-    init_subscriber("localhost", 9999, 5);
-
-    void *depth_frame_data;
-    void *color_frame_data;
-
-    while (1) {
-      auto new_frame = get_next_frame_ptrs(depth_frame_data, color_frame_data);
-      spdlog::debug("new frame? {} ", new_frame);
-    }
-
-    close_subscriber();
-
-    return 0;
+  return 0;
 }

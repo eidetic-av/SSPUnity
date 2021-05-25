@@ -15,8 +15,8 @@ general:
       streaming_rate: "K4A_FRAMES_PER_SECOND_30"
       absoluteExposureValue: 0
       # culling the background is *very* GPU intensive
-      # switch it to False if there are performance issues
-      cull_background: True
+      # it currently only works under azure kinect
+      cull_background: False
 video_encoder:
   0: #color
     type: "libav"

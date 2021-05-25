@@ -33,7 +33,7 @@ set(LIB_FILES zmq zdepth zstd yaml-cpp swscale avcodec avformat swresample avuti
 if(ANDROID)
 	set(LIB_FILES ${LIB_FILES} opencv_java)
 else()
-	set(LIB_FILES ${LIB_FILES} k4a k4abt k4arecord)
+	set(LIB_FILES ${LIB_FILES} k4a k4abt k4arecord Kinect20)
 endif()
 
 set(SOURCE_FILES ${SSP_DIR}/structs/frame_struct.hpp ${SSP_DIR}/utils/utils.cc 
@@ -42,9 +42,10 @@ set(SOURCE_FILES ${SSP_DIR}/structs/frame_struct.hpp ${SSP_DIR}/utils/utils.cc
 	${SSP_DIR}/decoders/libav_decoder.cc ${SSP_DIR}/decoders/zdepth_decoder.cc 
 	src/libav_raw_decoder.cc src/zdepth_raw_decoder.cc)
 
-set(SERVER_SOURCE_FILES src/k4a_reader.cc ${SSP_DIR}/encoders/libav_encoder.cc
-	${SSP_DIR}/encoders/zdepth_encoder.cc ${SSP_DIR}/encoders/null_encoder.cc
-	${SSP_DIR}/readers/video_file_reader.cc ${SSP_DIR}/utils/kinect_utils.cc)
+set(SERVER_SOURCE_FILES src/k4a_reader.cc src/kinect2_reader.cc
+	${SSP_DIR}/encoders/libav_encoder.cc ${SSP_DIR}/encoders/zdepth_encoder.cc
+	${SSP_DIR}/encoders/null_encoder.cc ${SSP_DIR}/readers/video_file_reader.cc
+	${SSP_DIR}/utils/kinect_utils.cc)
 
 # only add executables for the server and test clients to desktop platforms
 if (NOT(ANDROID))

@@ -9,17 +9,17 @@
 #include <iostream>
 #include <vector>
 
-#include <utils/logger.h>
 #include <k4a/k4a.h>
 #include <k4abt.h>
+#include <utils/logger.h>
 
 #include <cereal/archives/binary.hpp>
 
+#include <readers/ireader.h>
 #include <structs/frame_struct.hpp>
 #include <utils/image_decoder.h>
 #include <utils/kinect_utils.h>
 #include <utils/video_utils.h>
-#include <readers/ireader.h>
 
 extern std::atomic_bool exiting;
 
@@ -62,6 +62,7 @@ private:
   bool stream_ir_;
 
   bool cull_background_;
+  bool stream_joints_;
 
   std::string stream_id_;
 
@@ -85,8 +86,8 @@ private:
   std::vector<std::shared_ptr<FrameStruct>> current_frame_;
 
 public:
-
-  K4AReader(uint8_t device_index, ExtendedAzureConfig device_config, bool cull_background);
+  K4AReader(uint8_t device_index, ExtendedAzureConfig device_config,
+            bool cull_background, bool stream_joints);
 
   ~K4AReader();
 

@@ -27,9 +27,11 @@ void NetworkSubscriber::init() {
     // subscribe to all incoming messages
     socket_->set(zmq::sockopt::subscribe, "");
 
+    // TODO conflate option seems to do nothing
     // the "conflate" option at "1" makes sure the subscriber only pulls the
     // latest frame (to reduce latency)
     socket_->set(zmq::sockopt::conflate, 1);
+    socket_->set(zmq::sockopt::rcvhwm, 1);
 
     // initialise the poller that checks if the stream has been updated
     poller_.add(zmq::socket_ref(zmq::from_handle, socket_.get()->handle()),

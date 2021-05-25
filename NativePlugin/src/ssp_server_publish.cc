@@ -26,8 +26,12 @@
 
 #include <k4a_reader.h>
 #include <utils/kinect_utils.h>
+
+#include <kinect2_reader.h>
+
 int main(int argc, char *argv[]) {
   spdlog::set_level(spdlog::level::debug);
+  // spdlog::set_level(spdlog::level::info);
 
   srand(time(NULL) * getpid());
 
@@ -35,7 +39,8 @@ int main(int argc, char *argv[]) {
     av_log_set_level(AV_LOG_QUIET);
 
     std::string codec_parameters_file = "./config.yaml";
-    if (argc >= 2) codec_parameters_file = std::string(argv[1]);
+    if (argc >= 2)
+      codec_parameters_file = std::string(argv[1]);
 
     YAML::Node codec_parameters = YAML::LoadFile(codec_parameters_file);
 
@@ -47,6 +52,8 @@ int main(int argc, char *argv[]) {
 
     zmq::context_t context(1);
     zmq::socket_t publisher(context, ZMQ_PUB);
+
+    publisher.set(zmq::sockopt::sndhwm, 1);
 
     spdlog::debug("Attempting to bind publisher to tcp://*:{}", port);
     publisher.bind("tcp://*:" + std::to_string(port));
@@ -70,7 +77,9 @@ int main(int argc, char *argv[]) {
                 cull_background = kinect_config["cull_background"].as<bool>();
       }
             reader = std::unique_ptr<K4AReader>(
-                new K4AReader(0, c, cull_background));
+          new K4AReader(0, c, cull_background, stream_joints));
+    } else if (reader_type == "kinect2") {
+      reader = std::unique_ptr<Kinect2Reader>(new Kinect2Reader(0));
     } else {
             spdlog::error("Unknown reader type: {}", reader_type);
       exit(1);
@@ -160,8 +169,6 @@ int main(int argc, char *argv[]) {
       if (!v.empty()) {
         std::string message = CerealStructToString(v);
 
-        // I think "request" here is the video data...
-        // let's call it something else to make that clearer
         zmq::message_t request(message.size());
         memcpy(request.data(), message.c_str(), message.size());
         publisher.send(request);

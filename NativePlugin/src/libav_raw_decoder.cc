@@ -3,13 +3,15 @@
 //
 
 #include "../include/libav_raw_decoder.h"
+
 #include <libavcodec/codec_id.h>
 
 LibAvRawDecoder::LibAvRawDecoder() {}
 
 LibAvRawDecoder::~LibAvRawDecoder() {}
 
-void LibAvRawDecoder::Init(AVCodecParameters* codec_parameters) {
+
+void LibAvRawDecoder::Init(AVCodecParameters *codec_parameters) {
     av_register_all();
 
     codec_ = std::unique_ptr<AVCodec, AVCodecDeleter>(
@@ -21,32 +23,33 @@ void LibAvRawDecoder::Init(AVCodecParameters* codec_parameters) {
         exit(1);
     }
 
-  // the following is needed to successfully unpack on android
-  // using avcodec_parameters_to_context fails,
-  // so publisher must match the following settings for now
+    // the following is needed to successfully unpack on android
+    // using avcodec_parameters_to_context fails,
+    // so publisher must match the following settings for now
 
-  codec_context_->codec_type = AVMEDIA_TYPE_VIDEO;
-  codec_context_->codec_id = AV_CODEC_ID_H264;
-  codec_context_->pix_fmt = AV_PIX_FMT_YUV420P;
-  codec_context_->width = 1280;
-  codec_context_->height = 720;
-  codec_context_->bit_rate = 80000;
-  codec_context_->time_base.num = 1;
-  codec_context_->time_base.den = 30;
-  codec_context_->framerate.num = 1;
-  codec_context_->framerate.den = 30;
-  codec_context_->rc_max_rate = 0;
-  codec_context_->bit_rate_tolerance = 0;
-  codec_context_->rc_buffer_size = 0;
-  codec_context_->gop_size = 0;
-  codec_context_->max_b_frames = 0;
-  codec_context_->delay = 0;
+    codec_context_->codec_type = AVMEDIA_TYPE_VIDEO;
+    codec_context_->codec_id = AV_CODEC_ID_H264;
+    codec_context_->pix_fmt = AV_PIX_FMT_YUV420P;
+    codec_context_->width = 640;
+    codec_context_->height = 576;
+    codec_context_->bit_rate = 80000;
+    codec_context_->time_base.num = 1;
+    codec_context_->time_base.den = 30;
+    codec_context_->framerate.num = 1;
+    codec_context_->framerate.den = 30;
+    codec_context_->rc_max_rate = 0;
+    codec_context_->bit_rate_tolerance = 0;
+    codec_context_->rc_buffer_size = 0;
+    codec_context_->gop_size = 0;
+    codec_context_->max_b_frames = 0;
+    codec_context_->delay = 0;
 
-  // if (avcodec_parameters_to_context(codec_context_.get(), codec_parameters) <
-  //     0) {
-  //   spdlog::error("Failed to copy codec params to codec context.");
-  //   exit(1);
-  // }
+    // if (avcodec_parameters_to_context(codec_context_.get(), codec_parameters)
+    // <
+    //     0) {
+    //   spdlog::error("Failed to copy codec params to codec context.");
+    //   exit(1);
+    // }
 
     if (avcodec_open2(codec_context_.get(), codec_.get(), NULL) < 0) {
         spdlog::error("Failed to open codec through avcodec_open2.");
@@ -54,7 +57,7 @@ void LibAvRawDecoder::Init(AVCodecParameters* codec_parameters) {
     }
 }
 
-cv::Mat LibAvRawDecoder::Decode(FrameStruct& frame_struct) {
+cv::Mat LibAvRawDecoder::Decode(FrameStruct &frame_struct) {
     AVPacketSharedP packet_av =
         std::shared_ptr<AVPacket>(av_packet_alloc(), AVPacketSharedDeleter);
     AVFrameSharedP frame_av =
@@ -88,7 +91,7 @@ cv::Mat LibAvRawDecoder::Decode(FrameStruct& frame_struct) {
     return img;
 }
 
-void* LibAvRawDecoder::DecodeRaw(FrameStruct& frame_struct) {
+void *LibAvRawDecoder::DecodeRaw(FrameStruct &frame_struct) {
     AVPacketSharedP packet_av =
         std::shared_ptr<AVPacket>(av_packet_alloc(), AVPacketSharedDeleter);
     AVFrameSharedP frame_av =
@@ -97,7 +100,6 @@ void* LibAvRawDecoder::DecodeRaw(FrameStruct& frame_struct) {
     packet_av->data = frame_struct.frame.data();
     packet_av->size = frame_struct.frame.size();
 
-    cv::Mat img;
     int response = avcodec_send_packet(codec_context_.get(), packet_av.get());
     if (response >= 0) {
         response = avcodec_receive_frame(codec_context_.get(), frame_av.get());
@@ -105,18 +107,22 @@ void* LibAvRawDecoder::DecodeRaw(FrameStruct& frame_struct) {
             int width = frame_av->width;
             int height = frame_av->height;
 
-            // copy the pixel data into an RGBA buffer
-            uint8_t* rgb_data[4];
+            // prepare the output buffer
+            uint8_t *rgb_data[4];
             int rgb_linesize[4];
+            av_image_alloc(rgb_data, rgb_linesize, width, height,
+                           AV_PIX_FMT_RGBA, 32);
 
-            SwsContext* conversion_ctx;
+            // convert the codec pix_fmt to rgba
+            SwsContext *conversion_ctx;
             conversion_ctx =
                 sws_getContext(width, height, codec_context_->pix_fmt, width,
                                height, AV_PIX_FMT_RGBA, 0, 0, 0, 0);
-            av_image_alloc(rgb_data, rgb_linesize, width, height,
-                           AV_PIX_FMT_RGBA, 32);
             sws_scale(conversion_ctx, frame_av->data, frame_av->linesize, 0,
                       height, rgb_data, rgb_linesize);
+            sws_freeContext(conversion_ctx);
+
+            frame_av.~shared_ptr();
 
             return rgb_data[0];
         }

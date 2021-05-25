@@ -12,19 +12,18 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-#include <utils/logger.h>
 #include <iostream>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/imgproc.hpp>
+#include <utils/logger.h>
 
-#include <utils/video_utils.h>
 #include <utils/libav_types.h>
+#include <utils/video_utils.h>
 
 #include <decoders/idecoder.h>
 
 class LibAvRawDecoder : public IDecoder {
 private:
-
   AVCodecSafeP codec_;
   AVCodecContextSafeP codec_context_;
 
@@ -32,6 +31,6 @@ public:
   LibAvRawDecoder();
   ~LibAvRawDecoder();
   void Init(AVCodecParameters *codec_parameters);
-  cv::Mat Decode(FrameStruct& frame_struct);
-  void* DecodeRaw(FrameStruct& frame_struct);
+  cv::Mat Decode(FrameStruct &frame_struct);
+  void *DecodeRaw(FrameStruct &frame_struct);
 };
